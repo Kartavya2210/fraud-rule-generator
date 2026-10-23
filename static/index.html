@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fraud Rule Generator</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --text: #1b1f24; --muted: #646d78; --border: #e1e4e8;
+    --accent: #3a5bd9; --accent-text: #fff; --good: #1a7f4b; --good-bg: #e6f4ec;
+    --bad: #b42318; --bad-bg: #fdecea; --warn: #9a6700; --code-bg: #f0f2f5; --bar: #c9d3f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111418; --panel: #1a1e24; --text: #e6e8eb; --muted: #9aa3ad; --border: #2c323a;
+      --accent: #7b96f2; --accent-text: #0d1117; --good: #4cc38a; --good-bg: #13291e;
+      --bad: #f2786d; --bad-bg: #331a18; --warn: #e3b341; --code-bg: #0f1216; --bar: #33407a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between;
+           padding: 18px 24px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  h1 { font-size: 18px; margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  h3 { font-size: 13px; margin: 16px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #health { color: var(--muted); font-size: 13px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 16px; display: grid; gap: 16px;
+         grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
+  .full { grid-column: 1 / -1; }
+  textarea { width: 100%; min-height: 110px; resize: vertical; padding: 10px; border-radius: 8px;
+             border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+  select, button { font: inherit; border-radius: 8px; padding: 7px 12px; border: 1px solid var(--border);
+                   background: var(--panel); color: var(--text); cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip { font-size: 12px; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border);
+          background: var(--bg); cursor: pointer; color: var(--muted); }
+  .chip:hover { color: var(--text); border-color: var(--accent); }
+  .muted { color: var(--muted); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+           text-transform: uppercase; letter-spacing: .03em; background: var(--code-bg); }
+  .badge.good { background: var(--good-bg); color: var(--good); }
+  .badge.bad { background: var(--bad-bg); color: var(--bad); }
+  pre, code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12.5px; }
+  pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow-x: auto; margin: 0;
+        white-space: pre-wrap; word-break: break-word; }
+  .cond { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; padding: 6px 10px; margin: 4px 0;
+          border-left: 3px solid var(--accent); background: var(--code-bg); border-radius: 0 6px 6px 0; }
+  .group { margin: 6px 0; padding: 4px 0 4px 12px; border-left: 2px dashed var(--border); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .tile { background: var(--bg); border-radius: 8px; padding: 10px; }
+  .tile b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .tile span { font-size: 12px; color: var(--muted); }
+  .gate { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; }
+  .gate .icon { width: 16px; font-weight: 700; }
+  .ok { color: var(--good); } .fail { color: var(--bad); }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 60px; gap: 8px; align-items: center; font-size: 12.5px; margin: 3px 0; }
+  .bar { height: 10px; border-radius: 4px; background: var(--bg); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .error { color: var(--bad); background: var(--bad-bg); padding: 10px; border-radius: 8px; margin-top: 10px; white-space: pre-wrap; }
+  details summary { cursor: pointer; color: var(--muted); margin-top: 10px; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border);
+             border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Gen AI Fraud Rule Generator</h1>
+  <div id="health">connecting…</div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Describe a fraud pattern</h2>
+    <textarea id="desc" placeholder="e.g. Online purchases from a new device where the IP is in a different country than the cardholder, well above their usual spend"></textarea>
+    <div class="chips" id="examples"></div>
+    <div class="row">
+      <select id="provider" aria-label="LLM provider">
+        <option value="">default provider</option>
+        <option value="ollama">Ollama (local)</option>
+        <option value="gemini">Gemini (cloud)</option>
+        <option value="groq">Groq (cloud)</option>
+      </select>
+      <button class="primary" id="go">Generate &amp; back-test</button>
+      <span id="status" class="muted"></span>
+    </div>
+    <div id="gen-error"></div>
+    <div id="rule"></div>
+  </section>
+
+  <section class="panel" id="bt-panel">
+    <h2>Back-test</h2>
+    <div id="backtest" class="muted">Generate a rule to see how it would have performed on historical transactions.</div>
+  </section>
+
+  <section class="panel full">
+    <h2>Rule registry</h2>
+    <div class="table-wrap"><table id="rules"></table></div>
+  </section>
+</main>
+
+<script>
+const EXAMPLES = [
+  "Account takeover: big online order from a never-seen device, far above normal spend",
+  "Card used in person abroad a few hours after a home transaction",
+  "High-value crypto or gambling between 1am and 4am",
+  "More than 10 transactions on a card in 24h totalling over $3000",
+];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct = (x) => (x * 100).toFixed(1) + "%";
+const money = (x) => "$" + Math.round(x).toLocaleString();
+let current = null;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error("request failed"), { status: r.status, body });
+  return body;
+}
+
+function condText(c) {
+  const v = Array.isArray(c.value) ? (c.op === "between" ? `${c.value[0]} and ${c.value[1]}` : `[${c.value.join(", ")}]`) : c.value;
+  return `${c.field} ${c.op.replace("_", " ")} ${v}`;
+}
+
+function renderRule(res) {
+  const r = res.rule, g = res.generation;
+  const conds = r.conditions.map(n => n.conditions
+    ? `<div class="group"><span class="muted">${n.logic.toUpperCase()} of:</span>${n.conditions.map(c => `<div class="cond">${esc(condText(c))}</div>`).join("")}</div>`
+    : `<div class="cond">${esc(condText(n))}</div>`).join("");
+  const rejected = g.rejected_attempts.length
+    ? `<details><summary>${g.rejected_attempts.length} rejected attempt(s) before a valid rule</summary><pre>${esc(g.rejected_attempts.map((e, i) => `attempt ${i + 1}:\n  - ` + e.join("\n  - ")).join("\n"))}</pre></details>` : "";
+  $("rule").innerHTML = `
+    <h3>Generated rule</h3>
+    <div class="row" style="margin-top:0"><b>${esc(r.name)}</b>
+      <span class="badge">${esc(r.severity)}</span><span class="badge">${esc(r.action)}</span></div>
+    <p>${esc(r.description)}</p>
+    <div class="muted">Match <b>${r.logic.toUpperCase()}</b> of:</div>${conds}
+    <p class="muted">${esc(r.rationale)}</p>
+    <h3>Compiled SQL</h3><pre>WHERE ${esc(res.sql_where)}</pre>
+    <p class="muted">${esc(g.provider)} / ${esc(g.model)} · ${g.attempts} attempt(s) · ${(g.latency_ms / 1000).toFixed(1)}s</p>
+    ${rejected}
+    <details><summary>Rule JSON</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details>`;
+}
+
+function renderBacktest(bt, ruleId) {
+  if (!bt) { $("backtest").innerHTML = '<span class="muted">Not back-tested.</span>'; return; }
+  const m = bt.metrics;
+  const gates = bt.gates.map(g => `<div class="gate"><span class="icon ${g.passed ? "ok" : "fail"}">${g.passed ? "✓" : "✗"}</span>
+      <span><b>${esc(g.gate)}</b> <span class="muted">${esc(g.detail)}</span></span></div>`).join("");
+  const types = Object.entries(bt.recall_by_fraud_type).map(([t, v]) => `
+      <div class="bar-row"><span>${esc(t)}</span><div class="bar"><i style="width:${v.recall * 100}%"></i></div>
+      <span class="muted">${v.caught}/${v.total}</span></div>`).join("");
+  const inc = bt.incremental ? `<p class="muted">vs ${bt.incremental.deployed_rules} deployed rule(s): catches
+      <b>${bt.incremental.new_fraud_caught}</b> new fraud txns, overlaps ${bt.incremental.overlap_with_deployed} already-flagged.</p>` : "";
+  const sample = bt.sample_flagged.map(s => `<tr><td>${esc(s.txn_id)}</td><td>${esc(s.ts)}</td><td class="num">${money(s.amount)}</td>
+      <td>${esc(s.merchant_category)}</td><td>${esc(s.channel)}</td><td>${esc(s.country)}</td>
+      <td>${s.is_fraud ? `<span class="badge bad">${esc(s.fraud_type)}</span>` : '<span class="muted">legit</span>'}</td></tr>`).join("");
+  $("backtest").innerHTML = `
+    <div class="row" style="margin-top:0">
+      <span class="badge ${bt.passed ? "good" : "bad"}">${bt.passed ? "passed all gates" : "failed"}</span>
+      <button class="primary" id="deploy" ${bt.passed ? "" : "disabled"}>Deploy rule #${ruleId}</button>
+    </div>
+    <h3>Deployment gates</h3>${gates}
+    <h3>Performance on ${m.transactions.toLocaleString()} historical transactions</h3>
+    <div class="tiles">
+      <div class="tile"><b>${pct(m.precision)}</b><span>precision</span></div>
+      <div class="tile"><b>${pct(m.recall)}</b><span>recall (all fraud)</span></div>
+      <div class="tile"><b>${m.flagged.toLocaleString()}</b><span>flagged</span></div>
+      <div class="tile"><b>${pct(m.flag_rate)}</b><span>flag rate</span></div>
+      <div class="tile"><b>${m.alerts_per_day}</b><span>alerts / day</span></div>
+      <div class="tile"><b>${money(m.fraud_amount_caught)}</b><span>fraud $ caught</span></div>
+    </div>
+    <h3>Recall by fraud type</h3>${types}${inc}
+    <h3>Engines</h3>
+    <p class="muted">pandas ${bt.engines.pandas_ms} ms · ${esc(bt.engines.sql_dialect)} ${bt.engines.sql_ms} ms ·
+      ${bt.engines.agreement ? '<span class="ok">identical results</span>' : '<span class="fail">results differ</span>'}</p>
+    <h3>Sample flagged transactions</h3>
+    <div class="table-wrap"><table><tr><th>txn</th><th>time</th><th>amount</th><th>category</th><th>channel</th><th>country</th><th>label</th></tr>${sample}</table></div>`;
+  $("deploy").onclick = () => act(ruleId, "deploy");
+}
+
+async function refreshRules() {
+  const rows = await api("/rules");
+  const head = `<tr><th>#</th><th>name</th><th>status</th><th>precision</th><th>recall</th><th>flagged</th><th>model</th><th></th></tr>`;
+  $("rules").innerHTML = head + (rows.length ? rows.map(r => {
+    const b = r.latest_backtest;
+    const status = r.status === "deployed" ? "good" : r.status === "retired" ? "bad" : "";
+    return `<tr><td>${r.id}</td><td title="${esc(r.source_prompt)}">${esc(r.name)}</td>
+      <td><span class="badge ${status}">${r.status}</span>${b && !b.passed && r.status === "draft" ? ' <span class="fail" title="last back-test failed">✗</span>' : ""}</td>
+      <td class="num">${b ? pct(b.precision) : "—"}</td><td class="num">${b ? pct(b.recall) : "—"}</td><td class="num">${b ? b.flagged : "—"}</td>
+      <td class="muted">${esc(r.model)}</td>
+      <td><button data-view="${r.id}">view</button>
+        ${r.status === "deployed" ? `<button data-act="retire" data-id="${r.id}">retire</button>`
+          : r.status === "draft" ? `<button data-act="backtest" data-id="${r.id}">re-test</button>` : ""}</td></tr>`;
+  }).join("") : `<tr><td colspan="8" class="muted">No rules yet.</td></tr>`);
+  $("rules").querySelectorAll("[data-act]").forEach(b => b.onclick = () => act(+b.dataset.id, b.dataset.act));
+  $("rules").querySelectorAll("[data-view]").forEach(b => b.onclick = () => view(+b.dataset.view));
+}
+
+async function view(id) {
+  const r = await api(`/rules/${id}`);
+  renderRule({ rule: r.rule, sql_where: r.sql_where, generation: { provider: r.provider, model: r.model,
+               attempts: r.attempts, latency_ms: 0, rejected_attempts: [] } });
+  renderBacktest(r.latest_backtest_detail, id);
+  if (r.status !== "draft" && $("deploy")) $("deploy").disabled = true;
+}
+
+async function act(id, action) {
+  try {
+    const res = await api(`/rules/${id}/${action}`, { method: "POST" });
+    if (action === "backtest") renderBacktest(res, id);
+    if (action === "deploy" && $("deploy")) { $("deploy").disabled = true; $("deploy").textContent = "Deployed"; }
+  } catch (e) { alert(JSON.stringify(e.body?.detail ?? e.message)); }
+  refreshRules(); refreshHealth();
+}
+
+async function refreshHealth() {
+  try {
+    const h = await api("/health");
+    $("health").textContent = `${h.database} · ${h.transactions.toLocaleString()} transactions · ${h.deployed_rules} deployed rule(s) · default LLM: ${h.default_provider}`;
+  } catch { $("health").textContent = "API unreachable"; }
+}
+
+$("go").onclick = async () => {
+  const description = $("desc").value.trim();
+  if (description.length < 10) { $("desc").focus(); return; }
+  $("go").disabled = true; $("gen-error").innerHTML = "";
+  $("status").innerHTML = '<span class="spinner"></span> generating…';
+  try {
+    const res = await api("/rules/generate", { method: "POST",
+      body: JSON.stringify({ description, provider: $("provider").value || null }) });
+    current = res; renderRule(res); renderBacktest(res.backtest, res.rule_id);
+  } catch (e) {
+    const d = e.body?.detail;
+    $("gen-error").innerHTML = `<div class="error">${esc(typeof d === "string" ? d : JSON.stringify(d, null, 2) || e.message)}</div>`;
+  } finally {
+    $("go").disabled = false; $("status").textContent = ""; refreshRules(); refreshHealth();
+  }
+};
+
+$("examples").innerHTML = EXAMPLES.map(e => `<span class="chip">${esc(e)}</span>`).join("");
+$("examples").querySelectorAll(".chip").forEach(c => c.onclick = () => { $("desc").value = c.textContent; });
+refreshHealth(); refreshRules();
+</script>
+</body>
+</html>

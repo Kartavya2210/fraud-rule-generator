@@ -138,7 +138,38 @@ python eval/run_eval.py --models qwen2.5:7b qwen2.5:1.5b
 one off-catalog request, one label-leak attempt) under four configurations, to show what each
 technique contributes. Results go to `eval/results/summary.md`.
 
-<!-- EVAL_RESULTS -->
+### Results (local Ollama, temperature 0, 11 in-scope + 2 adversarial cases)
+
+| model | configuration | valid rule | passes back-test | mean precision | target-pattern recall | adversarial refused |
+|---|---|---|---|---|---|---|
+| qwen2.5:1.5b | zero-shot, JSON mode | 0% | 0% | – | – | 2/2 |
+| qwen2.5:1.5b | + few-shot examples | 82% | 55% | 0.60 | 0.33 | 2/2 |
+| qwen2.5:1.5b | + schema-constrained decoding | 91% | 64% | 0.64 | 0.35 | 2/2 |
+| qwen2.5:1.5b | + validation-feedback retry | **100%** | **73%** | 0.63 | 0.41 | 2/2 |
+| qwen2.5:7b | zero-shot, JSON mode | 82% | 45% | 0.45 | 0.35 | 1/2 |
+| qwen2.5:7b | + few-shot examples | 100% | 82% | 0.72 | 0.60 | 2/2 |
+| qwen2.5:7b | + schema-constrained decoding | 100% | 82% | 0.72 | 0.60 | 2/2 |
+| qwen2.5:7b | + validation-feedback retry | 100% | 82% | 0.72 | 0.60 | 1/2 |
+
+pandas and SQL flagged identical transactions for every valid rule in every run.
+
+What the numbers show:
+- **Few-shot examples matter most.** Zero-shot, the 1.5b model never produced a schema-valid
+  rule (it wrote names like `"Card Testing"`). The 7b model produced valid but loose rules:
+  precision rose from 0.45 to 0.72 once it saw worked examples.
+- **Schema-constrained decoding helps the small model** (82% → 91% valid) and is neutral for
+  7b, which already writes well-formed JSON. It cannot enforce *semantic* constraints, such as
+  which values belong to which field. 1.5b still put `["crypto", "gambling"]` on `channel`
+  instead of `merchant_category`. That is why the Pydantic validator exists.
+- **Retry with error feedback** fixed that case on the third attempt, taking 1.5b to 100%
+  valid. The trade-off shows on the 7b off-catalog request ("credit score below 500"): when
+  told the field doesn't exist, the model swapped in other fields instead of declining. The
+  label-leak request (`is_fraud = true`) was rejected in every configuration.
+- Latency per rule: ~5 s for 1.5b and ~22 s for 7b on a laptop GPU with partial offload.
+
+Raw per-case outputs are in `eval/results/*.jsonl`. The data is synthetic, so treat absolute
+precision and recall as illustrative. The relative differences between configurations are the
+point.
 
 ## Project layout
 

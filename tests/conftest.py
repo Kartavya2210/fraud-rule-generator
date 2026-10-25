@@ -3,8 +3,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Point the app at a throwaway SQLite database before anything imports app.db.
-os.environ["DATABASE_URL"] = f"sqlite:///{Path(tempfile.mkdtemp()).as_posix()}/test.db"
+# Point the app at a throwaway database before anything imports app.db.
+# Set TEST_DATABASE_URL to run the suite against PostgreSQL; its tables are wiped.
+os.environ["DATABASE_URL"] = (os.getenv("TEST_DATABASE_URL")
+                              or f"sqlite:///{Path(tempfile.mkdtemp()).as_posix()}/test.db")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pytest  # noqa: E402

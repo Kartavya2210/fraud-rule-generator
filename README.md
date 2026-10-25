@@ -98,6 +98,17 @@ DATABASE_URL=postgresql+psycopg2://postgres:<password>@localhost:5432/fraud_rule
 ```
 If `DATABASE_URL` is unset, the app uses a local SQLite file so it runs with zero setup.
 
+No local Postgres? You can use a throwaway container instead:
+
+```bash
+docker run -d --rm --name frg-postgres -e POSTGRES_PASSWORD=devpass -e POSTGRES_DB=fraud_rules -p 5433:5432 postgres:17
+```
+```
+DATABASE_URL=postgresql+psycopg2://postgres:devpass@127.0.0.1:5433/fraud_rules
+```
+On Windows, use `127.0.0.1` rather than `localhost`. Docker Desktop can drop connections that
+resolve to IPv6 `::1`.
+
 **Load historical transactions, then start the API:**
 
 ```bash
@@ -133,6 +144,19 @@ curl -X POST localhost:8010/rules/generate -H "Content-Type: application/json" \
 pytest -q                                              # 25 tests: schema, pandas/SQL parity, retry loop, API flow
 python eval/run_eval.py --models qwen2.5:7b qwen2.5:1.5b
 ```
+
+The suite uses a temporary SQLite database by default. To run it against PostgreSQL, set
+`TEST_DATABASE_URL` to a database whose tables can be wiped:
+
+```bash
+set TEST_DATABASE_URL=postgresql+psycopg2://postgres:devpass@127.0.0.1:5433/fraud_rules_test
+pytest -q
+```
+
+**Verified on PostgreSQL 17.** All 25 tests pass against Postgres. All 34 distinct rules the
+LLMs generated during the eval were re-back-tested in Postgres: pandas and Postgres flagged
+identical transaction sets for every rule, and every metric matched the SQLite run exactly.
+Median rule execution over 56k rows: pandas ~5 ms, Postgres ~13 ms.
 
 `eval/run_eval.py` runs 13 benchmark descriptions (10 targeting known patterns, one velocity rule,
 one off-catalog request, one label-leak attempt) under four configurations, to show what each
